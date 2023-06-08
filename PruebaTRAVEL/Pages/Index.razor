@@ -1,0 +1,258 @@
+﻿@inject PruebaTRAVEL.Services.SqlServices service
+
+@page "/"
+@using PruebaTRAVEL.Model;
+
+@if (msg != null && msg != "")
+{
+    <div class="alert" @onclick="Close">
+        @msg
+        <button class="btn-close">X</button>
+    </div>
+}
+
+<div class="form">
+    <div>
+        <input placeholder="Nombre autor" @bind-value="item.Autor.nombre" />
+    </div>
+    <div>
+        <input placeholder="Apellido autor" @bind-value="item.Autor.apellido" />
+    </div>
+    <div>
+        <input placeholder="Titulo libro" @bind-value="item.Libros.titulo" />
+    </div>
+    <div>
+        <input placeholder="n_paginas" type="number" @bind-value="item.Libros.n_paginas" />
+    </div>
+    <div>
+        <input placeholder="Sinopsis" @bind-value="item.Libros.sinopsis" />
+    </div>
+    <div>
+        <input placeholder="Nombre editorial" @bind-value="item.Editoriales.nombre" />
+    </div>
+    <div>
+        <input placeholder="Sede" @bind-value="item.Editoriales.sede" />
+    </div>
+</div>
+<div class="div-btn">
+    <button @onclick="Saved">Gurdar</button>
+</div>
+
+
+<div class="div-grid">
+    <div>
+        autor
+    </div>
+    <div>
+        Apellido autor
+    </div>
+    <div>
+        Titulo libro
+    </div>
+    <div>
+        # paginas
+    </div>
+    <div>
+        Sinopsis
+    </div>
+    <div>
+        Nombre editorial
+    </div>
+    <div>
+        Sede
+    </div>
+    <div>
+        Acción
+    </div>
+    @if (ListItem.Autor != null)
+    {
+        foreach (var item in ListItem.Libros)
+        {
+            <div>
+                @GetDataAutor(item.IBN, "nombre")
+            </div>
+            <div>
+                @ListItem.Autor.Where(s=>s.id == ListItem.Autor_has_libros.Where(s=>s.libros_ISBN == item.IBN).FirstOrDefault().autores_id).FirstOrDefault().apellido;
+            </div>
+            <div>
+                @item.titulo
+            </div>
+            <div>
+                @GetData("n_paginas");
+            </div>
+            <div>
+                @GetData("sinopsis");
+
+            </div>
+            <div>
+                @GetData("nombre");
+
+            </div>
+            <div>
+                @GetData("sede");
+
+
+            </div>
+            <div class="edit">
+                <div>
+                    <button @onclick='()=>Delete(item.IBN)' class="detele">Borrar</button>
+                    <button @onclick='()=>Edit(item.IBN)'>Editar</button>
+                </div>
+            </div>
+        }
+
+    }
+</div>
+
+
+@code {
+    public ModelGeneral item { get; set; }
+    public string msg = "";
+    public int count = 0;
+
+    public ModelGeneralList ListItem { get; set; }
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+        Load();
+        StateHasChanged();
+    }
+
+    private async void LoadData()
+    {
+        ListItem = await service.GetAll();
+        StateHasChanged();
+    }
+
+    private async void Saved()
+    {
+        bool status = false;
+        if (item.Autor.nombre != "" && item.Libros.titulo != "" && item.Editoriales.nombre != "")
+        {
+
+            status = await service.SavedUpdateGeneral(item);
+            if (status) { Alert("Guardado"); LoadData(); }
+            LoadNew();
+        }
+        StateHasChanged();
+    }
+
+    public async void Edit(int id)
+    {
+
+        if (ListItem != null)
+        {
+            item.Autor = Getautor(id);
+            item.Autor_has_libros = GetAutorhasLiro(id);
+            item.Libros = ListItem.Libros.Where(s => s.IBN == id).FirstOrDefault();
+            item.Editoriales = ListItem.Editoriales.Where(s => s.id == item.Libros.esditoriales_id).FirstOrDefault();
+           
+            
+        }
+        StateHasChanged();
+    }
+
+    public async void Delete(int id)
+    {        
+        if (ListItem != null)
+        {
+            item.Autor = Getautor(id);
+            item.Autor_has_libros = GetAutorhasLiro(id);
+            item.Libros = ListItem.Libros.Where(s=>s.IBN == id).FirstOrDefault();
+            item.Editoriales = ListItem.Editoriales.Where(s => s.id == item.Libros.esditoriales_id).FirstOrDefault();
+            bool status = await service.DeleteGeneral(item);
+            if (status) { Alert("Delete"); LoadData(); }
+            LoadNew();
+            StateHasChanged();
+
+        }
+    }
+
+    private string GetData(string name)
+    {
+
+        if (name == "Titulo") return ListItem.Libros[count].titulo;
+        if (name == "sede") count++;
+        return name;
+    }
+
+    private string GetDataAutor(int IBN, string name)
+    {
+        string result = "";
+        var autor = Getautor(IBN);
+        if (autor!=null)
+        {
+            return autor != null ? autor.nombre : "";
+        }
+
+        return "";
+    }
+
+
+
+    private autores Getautor(int IBN)
+    {
+        var autorhasLiro = ListItem.Autor_has_libros.Where(s => s.libros_ISBN == IBN).FirstOrDefault();
+        if (autorhasLiro != null)
+        {
+            var autor = ListItem.Autor.Where(s => s.id == autorhasLiro.libros_ISBN).FirstOrDefault();
+            return autor != null ? autor : null;
+        }
+        return null;
+    }
+
+    private autores_has_libros GetAutorhasLiro(int IBN)
+    {
+        var autorhasLiro = ListItem.Autor_has_libros.Where(s => s.libros_ISBN == IBN).FirstOrDefault();
+     
+        return autorhasLiro;
+    }
+
+    private void Close()
+    {
+        msg = "";
+        StateHasChanged();
+    }
+
+    private async void Update()
+    {
+        bool status = false;
+        if (item.Autor.nombre != "" && item.Libros.titulo != "" && item.Editoriales.nombre != "")
+        {
+            status = await service.SavedUpdateGeneral(item);
+            if (status) { Alert("Actualizado"); LoadData(); }
+            LoadNew();
+        }
+        StateHasChanged();
+    }
+
+
+   
+
+    private void Alert(string msg)
+    {
+        this.msg = msg;
+        StateHasChanged();
+    }
+
+
+    private void Load()
+    {
+        if (item == null) item = new();
+        if (item.Editoriales == null) item.Editoriales = new();
+        if (item.Autor == null) item.Autor = new();
+        if (item.Libros == null) item.Libros = new();
+        if (ListItem == null) ListItem = new();
+        if (item.Autor_has_libros == null) item.Autor_has_libros = new();
+    }
+
+    private void LoadNew()
+    {
+        item = new();
+        item.Editoriales = new();
+        item.Autor = new();
+        item.Libros = new();
+    }
+
+}
